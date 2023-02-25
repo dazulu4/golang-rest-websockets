@@ -14,12 +14,6 @@ import (
 )
 
 func main() {
-	// i := 2
-	// l := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	// fmt.Println(l)
-	// fmt.Println(copy(l[i:], l[i+1:]))
-	// fmt.Println(l)
-
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatalf("Error loading .env file %v\n", err)
@@ -43,6 +37,7 @@ func main() {
 }
 
 func BindRoutes(s server.Server, r *mux.Router) {
+
 	api := r.PathPrefix("/api/v1").Subrouter()
 
 	api.Use(middleware.CheckAuthMiddleware(s))

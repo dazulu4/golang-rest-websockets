@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	HASH_COST = bcrypt.DefaultCost
+	HASH_COST = 8
 )
 
 type SignUpResponse struct {
@@ -23,13 +23,13 @@ type SignUpResponse struct {
 	Email string `json:"email"`
 }
 
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
 type SignUpLoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
-}
-
-type LoginResponse struct {
-	Token string
 }
 
 func SignUpHandler(s server.Server) http.HandlerFunc {
@@ -40,12 +40,12 @@ func SignUpHandler(s server.Server) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), HASH_COST)
+		id, err := ksuid.NewRandom()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		id, err := ksuid.NewRandom()
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), HASH_COST)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -83,11 +83,11 @@ func LoginHandler(s server.Server) http.HandlerFunc {
 			return
 		}
 		if user == nil {
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			http.Error(w, "Invalid Credentials", http.StatusUnauthorized)
 			return
 		}
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password)); err != nil {
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password)); err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
 		claims := models.AppClaims{
@@ -106,6 +106,7 @@ func LoginHandler(s server.Server) http.HandlerFunc {
 		json.NewEncoder(w).Encode(LoginResponse{
 			Token: tokenString,
 		})
+
 	}
 }
 

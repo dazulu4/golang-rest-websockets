@@ -9,19 +9,19 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 	"github.com/segmentio/ksuid"
-
+	"platzi.com/go/rest-ws/events"
 	"platzi.com/go/rest-ws/models"
 	"platzi.com/go/rest-ws/repository"
 	"platzi.com/go/rest-ws/server"
 )
 
 type UpsertPostRequest struct {
-	Content string `json:"content"`
+	PostContent string `json:"postContent"`
 }
 
 type PostResponse struct {
-	Id      string `json:"id"`
-	Content string `json:"content"`
+	Id          string `json:"id"`
+	PostContent string `json:"postContent"`
 }
 
 type PostDeletedResponse struct {
@@ -51,9 +51,9 @@ func InsertPostHandler(s server.Server) http.HandlerFunc {
 				return
 			}
 			post := models.Post{
-				Id:      id.String(),
-				Content: postRequest.Content,
-				UserId:  claims.UserId,
+				Id:          id.String(),
+				PostContent: postRequest.PostContent,
+				UserId:      claims.UserId,
 			}
 			err = repository.InsertPost(r.Context(), &post)
 			if err != nil {
@@ -61,14 +61,14 @@ func InsertPostHandler(s server.Server) http.HandlerFunc {
 				return
 			}
 			var postMessage = models.WebsocketMessage{
-				Type:    "Post Created",
+				Type:    events.POST_CREATED,
 				Payload: post,
 			}
 			s.Hub().Broadcast(postMessage, nil)
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(PostResponse{
-				Id:      post.Id,
-				Content: post.Content,
+				Id:          post.Id,
+				PostContent: post.PostContent,
 			})
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -131,7 +131,7 @@ func UpdatePostByIdHandler(s server.Server) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
-		if _, ok := token.Claims.(*models.AppClaims); ok && token.Valid {
+		if claims, ok := token.Claims.(*models.AppClaims); ok && token.Valid {
 			var postRequest = UpsertPostRequest{}
 			err := json.NewDecoder(r.Body).Decode(&postRequest)
 			if err != nil {
@@ -139,10 +139,10 @@ func UpdatePostByIdHandler(s server.Server) http.HandlerFunc {
 				return
 			}
 			post := models.Post{
-				Content: postRequest.Content,
-				Id:      params["postId"],
+				PostContent: postRequest.PostContent,
+				Id:          params["postId"],
 			}
-			err = repository.UpdatePost(r.Context(), &post)
+			err = repository.UpdatePost(r.Context(), &post, claims.UserId)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
